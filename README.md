@@ -34,6 +34,9 @@ cd minsk-transport
 
 `npm install` не нужен: внешних зависимостей нет.
 
+Репозиторий приватный: при клонировании на другом компьютере или сервере
+понадобятся SSH-ключ, personal access token GitHub или deploy key.
+
 ## Запуск
 
 ```bash
