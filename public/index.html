@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru" data-theme="auto">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Транспорт Минска — табло остановок</title>
+    <meta
+      name="description"
+      content="Живое табло автобусов, троллейбусов и трамваев на избранных остановках Минска."
+    />
+    <meta name="theme-color" content="#08111f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f2f6fb" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon.svg" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css"
+      integrity="sha384-uTttxo/aOKbdE5RlD/SPzSDoDmNvGlUYPjONi2MN/b7c9HPSvW07OIuyP7uL6jxK"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script
+      src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"
+      integrity="sha384-5+cfbwT0iiub6VsQAdn6yz16nr6sDiQoHx6tm4O8OVYXHYOxcffFmCJBL0dgdvGp"
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <script type="module" src="/js/app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="#/">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <rect x="4" y="3.5" width="16" height="13" rx="3" />
+              <path d="M4 10h16M8 16.5V19M16 16.5V19M8 7h8" />
+              <circle cx="8.5" cy="13" r="1" fill="currentColor" stroke="none" />
+              <circle cx="15.5" cy="13" r="1" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          <span class="brand__text">
+            <strong>Транспорт</strong>
+            <small>Минск · табло</small>
+          </span>
+        </a>
+        <div class="topbar__actions">
+          <span class="status" id="status" title="Статус данных">
+            <span class="status__dot"></span>
+            <span class="status__label" id="status-label">…</span>
+          </span>
+          <button class="icon-btn" id="refresh-page" type="button" title="Обновить данные" aria-label="Обновить данные">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M20 11a8 8 0 1 0-2.3 6.3M20 5v6h-6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main id="view" class="view" aria-live="polite"></main>
+
+      <nav class="tabbar" aria-label="Основная навигация">
+        <a href="#/" data-tab="home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" stroke-linejoin="round" />
+          </svg>
+          <span>Избранное</span>
+        </a>
+        <a href="#/map" data-tab="map">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M9 4 3 6.5v14L9 18l6 2.5 6-2.5v-14L15 6.5z" stroke-linejoin="round" />
+            <path d="M9 4v14M15 6.5v14" />
+          </svg>
+          <span>Карта</span>
+        </a>
+        <a href="#/search" data-tab="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m16 16 4.5 4.5" stroke-linecap="round" />
+          </svg>
+          <span>Поиск</span>
+        </a>
+        <a href="#/settings" data-tab="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M4 7h10M18 7h2M4 17h2M10 17h10" stroke-linecap="round" />
+            <circle cx="16" cy="7" r="2" />
+            <circle cx="8" cy="17" r="2" />
+          </svg>
+          <span>Ещё</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

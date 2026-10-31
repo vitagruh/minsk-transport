@@ -1,0 +1,16 @@
+{
+  "name": "minsk-transport-board",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Табло транспорта на избранных остановках Минска",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "start:lan": "node scripts/start-lan.mjs",
+    "dev": "node --watch server.js",
+    "check:api": "node scripts/check-api.mjs"
+  }
+}

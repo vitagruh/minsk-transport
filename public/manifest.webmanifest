@@ -1,0 +1,28 @@
+{
+  "name": "Транспорт Минска — табло остановок",
+  "short_name": "Транспорт",
+  "description": "Живое табло автобусов, троллейбусов и трамваев на избранных остановках Минска.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "/#/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#070f1b",
+  "theme_color": "#070f1b",
+  "orientation": "portrait",
+  "categories": ["travel", "navigation"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

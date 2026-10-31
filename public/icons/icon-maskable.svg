@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Транспорт Минска">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#46e0b0"/>
+      <stop offset="1" stop-color="#5aa9ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+  <g fill="#05211a">
+    <rect x="180" y="150" width="152" height="184" rx="36"/>
+    <rect x="206" y="180" width="100" height="64" rx="14" fill="#eafff8"/>
+    <path d="M256 186v52" stroke="#46e0b0" stroke-width="5" opacity=".5"/>
+    <rect x="210" y="268" width="30" height="18" rx="9" fill="#eafff8" opacity=".9"/>
+    <rect x="272" y="268" width="30" height="18" rx="9" fill="#eafff8" opacity=".9"/>
+    <rect x="206" y="326" width="30" height="34" rx="12"/>
+    <rect x="276" y="326" width="30" height="34" rx="12"/>
+  </g>
+</svg>
