@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   canonicalStopId,
   getClientIp,
+  isMutatingMethod,
   isSameOriginRequest,
   RateLimiter
 } from '../lib/security.js';
@@ -50,6 +51,16 @@ test('isSameOriginRequest использует Sec-Fetch-Site и loopback для
   assert.equal(isSameOriginRequest(makeRequest({ ip: '::1' })), true);
   assert.equal(isSameOriginRequest(makeRequest({ ip: '::ffff:127.0.0.1' })), true);
   assert.equal(isSameOriginRequest(makeRequest({ ip: '192.168.1.10' })), false);
+});
+
+test('isMutatingMethod относит все небезопасные методы к изменяющим', () => {
+  for (const method of ['GET', 'HEAD', 'OPTIONS', 'get', 'head']) {
+    assert.equal(isMutatingMethod(method), false);
+  }
+  for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'post']) {
+    assert.equal(isMutatingMethod(method), true);
+  }
+  assert.equal(isMutatingMethod(undefined), true);
 });
 
 test('getClientIp учитывает X-Forwarded-For только при trustProxy', () => {

@@ -8,6 +8,7 @@ import { OverloadError, TtlCache } from './lib/cache.js';
 import {
   canonicalStopId,
   getClientIp,
+  isMutatingMethod,
   isSameOriginRequest,
   RateLimiter
 } from './lib/security.js';
@@ -320,9 +321,6 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === 'POST' && parts[1] === 'directory' && parts[2] === 'rebuild') {
-    if (!isSameOriginRequest(req)) {
-      return sendJson(res, 403, { error: 'forbidden_origin' });
-    }
     if (Date.now() - lastManualBuildAt < 60_000) {
       return sendJson(res, 429, { error: 'too_many_requests' });
     }
@@ -355,6 +353,9 @@ async function handleRequest(req, res) {
   }
 
   if (url.pathname.startsWith('/api/')) {
+    if (isMutatingMethod(req.method) && !isSameOriginRequest(req)) {
+      return sendJson(res, 403, { error: 'forbidden_origin' });
+    }
     const limit = apiLimiter.take(getClientIp(req, { trustProxy: TRUST_PROXY }));
     if (!limit.allowed) {
       res.setHeader('Retry-After', String(limit.retryAfterSec));
