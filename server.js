@@ -4,7 +4,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MinsktransClient, UpstreamError } from './lib/minsktrans.js';
 import { StopDirectory } from './lib/directory.js';
-import { TtlCache } from './lib/cache.js';
+import { OverloadError, TtlCache } from './lib/cache.js';
+import {
+  canonicalStopId,
+  getClientIp,
+  isSameOriginRequest,
+  RateLimiter
+} from './lib/security.js';
 import {
   cleanName,
   normalizeSchedule,
@@ -27,6 +33,9 @@ const BUILD_RETRY_MS = 5 * 60_000;
 const TRANSPORT_TYPES = new Set(['bus', 'trolleybus', 'tram']);
 const FAVORITE_STOPS_MAX = 25;
 const FAVORITE_ROUTES_MAX = 20;
+const API_RATE_PER_SEC = Number(process.env.API_RATE_PER_SEC) || 10;
+const API_RATE_BURST = Number(process.env.API_RATE_BURST) || 120;
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -43,23 +52,28 @@ const MIME_TYPES = {
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' https://unpkg.com",
-  "style-src 'self' 'unsafe-inline' https://unpkg.com",
-  "img-src 'self' data: blob: https://unpkg.com https://tiles.openfreemap.org",
+  "script-src 'self' https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js",
+  "style-src 'self' 'unsafe-inline' https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css",
+  "img-src 'self' data: blob: https://tiles.openfreemap.org",
   "connect-src 'self' https://tiles.openfreemap.org",
   "worker-src 'self' blob:",
   "font-src 'self'",
+  "object-src 'none'",
   "base-uri 'none'",
   "form-action 'self'",
   "frame-ancestors 'none'"
 ].join('; ');
 
-const client = new MinsktransClient({ concurrency: 3, minGapMs: 90 });
+const client = new MinsktransClient({ concurrency: 3, minGapMs: 90, maxQueue: 300 });
 const directory = new StopDirectory(client, path.join(DATA_DIR, 'stops.json'));
-const scoreboards = new TtlCache();
-const schedules = new TtlCache();
-const vehicles = new TtlCache();
-const nearest = new TtlCache();
+const scoreboards = new TtlCache({ maxEntries: 500 });
+const schedules = new TtlCache({ maxEntries: 250 });
+const vehicles = new TtlCache({ maxEntries: 500 });
+const nearest = new TtlCache({ maxEntries: 250 });
+const apiLimiter = new RateLimiter({
+  ratePerSec: API_RATE_PER_SEC,
+  burst: API_RATE_BURST
+});
 
 let nextBuildAttemptAt = 0;
 let lastManualBuildAt = 0;
@@ -224,8 +238,8 @@ async function handleApi(req, res, url) {
   }
 
   if (isGet && parts[1] === 'stop' && parts.length === 3) {
-    const id = parts[2];
-    if (!/^\d{1,12}$/.test(id)) return sendJson(res, 400, { error: 'bad_stop_id' });
+    const id = canonicalStopId(parts[2]);
+    if (!id) return sendJson(res, 400, { error: 'bad_stop_id' });
     const key = `stop:${id}`;
     try {
       const raw = await scoreboards.wrap(key, SCOREBOARD_TTL_MS, () => client.scoreboard(id));
@@ -240,8 +254,8 @@ async function handleApi(req, res, url) {
   }
 
   if (isGet && parts[1] === 'stop' && parts[3] === 'schedule' && parts.length === 4) {
-    const id = parts[2];
-    if (!/^\d{1,12}$/.test(id)) return sendJson(res, 400, { error: 'bad_stop_id' });
+    const id = canonicalStopId(parts[2]);
+    if (!id) return sendJson(res, 400, { error: 'bad_stop_id' });
     const key = `schedule:${id}`;
     try {
       const data = await schedules.wrap(key, SCHEDULE_TTL_MS, async () =>
@@ -256,11 +270,14 @@ async function handleApi(req, res, url) {
   }
 
   if (isGet && parts[1] === 'vehicles' && parts.length === 2) {
-    const stopIds = String(params.get('stops') || '')
-      .split(',')
-      .map((value) => Number(value))
-      .filter((value) => Number.isInteger(value) && value > 0)
-      .slice(0, FAVORITE_STOPS_MAX);
+    const stopIds = [
+      ...new Set(
+        String(params.get('stops') || '')
+          .split(',')
+          .map(canonicalStopId)
+          .filter(Boolean)
+      )
+    ].slice(0, FAVORITE_STOPS_MAX);
     if (!stopIds.length) {
       return sendJson(res, 200, { updatedAt: Date.now(), routes: [], vehicles: [] });
     }
@@ -303,6 +320,9 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === 'POST' && parts[1] === 'directory' && parts[2] === 'rebuild') {
+    if (!isSameOriginRequest(req)) {
+      return sendJson(res, 403, { error: 'forbidden_origin' });
+    }
     if (Date.now() - lastManualBuildAt < 60_000) {
       return sendJson(res, 429, { error: 'too_many_requests' });
     }
@@ -319,6 +339,13 @@ async function handleRequest(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim();
+  if (req.socket.encrypted || forwardedProto === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  }
 
   let url;
   try {
@@ -328,10 +355,22 @@ async function handleRequest(req, res) {
   }
 
   if (url.pathname.startsWith('/api/')) {
+    const limit = apiLimiter.take(getClientIp(req, { trustProxy: TRUST_PROXY }));
+    if (!limit.allowed) {
+      res.setHeader('Retry-After', String(limit.retryAfterSec));
+      return sendJson(res, 429, { error: 'too_many_requests' });
+    }
     try {
       return await handleApi(req, res, url);
     } catch (error) {
       if (res.headersSent) return res.end();
+      if (error instanceof OverloadError) {
+        res.setHeader('Retry-After', '1');
+        return sendJson(res, 503, {
+          error: 'overloaded',
+          message: 'Слишком много запросов к источнику, попробуйте через минуту'
+        });
+      }
       const isUpstream = error instanceof UpstreamError;
       if (!isUpstream) console.error('[api]', url.pathname, error);
       return sendJson(res, isUpstream ? 502 : 500, {
@@ -343,7 +382,13 @@ async function handleRequest(req, res) {
     }
   }
 
-  return serveStatic(req, res, decodeURIComponent(url.pathname));
+  let pathname;
+  try {
+    pathname = decodeURIComponent(url.pathname);
+  } catch {
+    return sendJson(res, 400, { error: 'bad_request' });
+  }
+  return serveStatic(req, res, pathname);
 }
 
 await directory.load();

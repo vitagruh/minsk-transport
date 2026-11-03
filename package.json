@@ -11,6 +11,7 @@
     "start": "node server.js",
     "start:lan": "node scripts/start-lan.mjs",
     "dev": "node --watch server.js",
-    "check:api": "node scripts/check-api.mjs"
+    "check:api": "node scripts/check-api.mjs",
+    "test": "node --test"
   }
 }
